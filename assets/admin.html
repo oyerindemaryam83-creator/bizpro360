@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - BizPro Manager</title>
+  <link rel="stylesheet" href="css/adminstyle.css">
+</head>
+<body>
+  <div class="admin-container">
+    
+    <aside class="sidebar">
+      <h2>BizPro Manager</h2>
+      <ul>
+        <li><a href="#">Dashboard</a></li>
+        <li><a href="#">Inventory</a></li>
+        <li><a href="#">Orders</a></li>
+        <li><a href="#">Reports</a></li>
+        <li><a href="indexlogin.html">Logout</a></li>
+      </ul>
+    </aside>
+
+    
+    <main class="main-content">
+      <header>
+        <h1>Welcome, Admin</h1>
+      </header>
+
+      
+      <section id="alerts"></section>
+
+     
+      <section class="add-product">
+        <h2>Add New Product</h2>
+        <form id="productForm">
+          <input type="text" id="productName" placeholder="Product Name" required>
+          <input type="text" id="variant" placeholder="Variant (e.g. Sachet 20g)" required>
+          <input type="number" id="price" placeholder="Price (₦)" required>
+          <input type="number" id="stock" placeholder="Initial Stock" required>
+          <button type="submit" class="btn">Add Product</button>
+        </form>
+      </section>
+
+   
+      <section class="products">
+        <h2>Inventory</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Variant</th>
+              <th>Price (₦)</th>
+              <th>Stock</th>
+              <th>Total Value (₦)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="productTable">
+            
+          </tbody>
+        </table>
+      </section>
+
+      <section class="history">
+        <h2>Activity History</h2>
+        <ul id="historyLog"></ul>
+      </section>
+    </main>
+  </div>
+
+ 
+  <div id="historyModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modalTitle">Product History</h2>
+      <ul id="productHistoryList"></ul>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
+

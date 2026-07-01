@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Dashboard - BizPro Manager</title>
+  <link rel="stylesheet" href="css/customer.css">
+</head>
+<body>
+  <div class="customer-container">
+    <header>
+      <h1 id="welcomeMessage">Welcome, Customer</h1>
+      <nav>
+        <a href="indexlogin.html">Logout</a>
+      </nav>
+    </header>
+
+  
+    <section class="products">
+      <h2>Available Products</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Variant</th>
+            <th>Price (₦)</th>
+            <th>Stock</th>
+            <th>Quantity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="customerProductTable"></tbody>
+      </table>
+    </section>
+
+   
+    <section class="cart">
+      <h2>Your Cart</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Variant</th>
+            <th>Qty</th>
+            <th>Price (₦)</th>
+            <th>Total (₦)</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody id="cartTable"></tbody>
+      </table>
+      <p><strong>Grand Total: ₦<span id="grandTotal">0</span></strong></p>
+
+      <label for="payment">Payment Amount (₦):</label>
+      <input type="number" id="payment" placeholder="Enter amount">
+      <button id="checkoutBtn">Checkout</button>
+
+      <p id="paymentResult"></p>
+    </section>
+
+    
+    <section class="receipt">
+      <h2>Receipt</h2>
+      <pre id="receiptOutput"></pre>
+      <button onclick="window.print()">🖨 Print Receipt</button>
+    </section>
+  </div>
+
+  <script src="js/customer.js"></script>
+</body>
+</html>

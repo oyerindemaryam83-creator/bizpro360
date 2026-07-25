@@ -21,7 +21,7 @@ async function getCurrentUserProfile() {
 async function requireRole(requiredRole) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
-    window.location.href = 'indexlogin.html';
+    window.location.href = 'index.html';
     return null;
   }
 
@@ -32,7 +32,7 @@ async function requireRole(requiredRole) {
     .single();
 
   if (error || !data || (requiredRole && data.role !== requiredRole)) {
-    window.location.href = 'indexlogin.html';
+    window.location.href = 'index.html';
     return null;
   }
 
@@ -41,5 +41,5 @@ async function requireRole(requiredRole) {
 
 async function signOut() {
   await supabase.auth.signOut();
-  window.location.href = 'indexlogin.html';
+  window.location.href = 'index.html';
 }

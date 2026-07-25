@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let products = [];
   let productHistory = [];
 
-  const logoutLink = document.querySelector('a[href="indexlogin.html"]');
+  const logoutLink = document.querySelector('a[href="index.html"]');
   if (logoutLink) {
     logoutLink.addEventListener('click', async (event) => {
       event.preventDefault();

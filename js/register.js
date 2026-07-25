@@ -40,7 +40,7 @@ document.getElementById("registerForm").addEventListener("submit", async functio
     message.textContent = "Account created successfully. Please check your email to confirm it, then sign in.";
 
     setTimeout(() => {
-        window.location.href = "indexlogin.html";
+        window.location.href = "index.html";
     }, 2500);
 });
 

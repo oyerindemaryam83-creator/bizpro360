@@ -6,7 +6,7 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
     const role = document.getElementById("role").value;
     const message = document.getElementById("message");
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
 
     if (error) {
         message.style.color = "red";
@@ -15,19 +15,23 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
     }
 
     const profile = await getCurrentUserProfile();
+    const selectedRole = role.toLowerCase();
+    const profileRole = normalizeRole(profile?.role);
 
-    if (!profile || profile.role !== role) {
+    if (profileRole && profileRole !== selectedRole) {
         message.style.color = "red";
-        message.textContent = `This account is not registered as ${role}.`;
+        message.textContent = `This account is not registered as ${selectedRole}.`;
         return;
     }
 
-    message.style.color = "green";
-    message.textContent = `${role} login successful! Redirecting...`;
+    sessionStorage.setItem("userRole", selectedRole);
 
-    if (role === "admin") {
-        setTimeout(() => window.location.href = "admin.html", 1500);
-    } else if (role === "customer") {
-        setTimeout(() => window.location.href = "customer.html", 1500);
+    message.style.color = "green";
+    message.textContent = `${selectedRole} login successful! Redirecting...`;
+
+    if (selectedRole === "admin") {
+        setTimeout(() => window.location.assign("admin.html"), 1500);
+    } else if (selectedRole === "customer") {
+        setTimeout(() => window.location.assign("customer.html"), 1500);
     }
 });

@@ -7,7 +7,7 @@ document.getElementById("registerForm").addEventListener("submit", async functio
     const role = document.getElementById("role").value;
     const message = document.getElementById("message");
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -22,7 +22,7 @@ document.getElementById("registerForm").addEventListener("submit", async functio
     }
 
     if (authData?.user) {
-        const { error: profileError } = await supabase.from('profiles').upsert({
+        const { error: profileError } = await window.supabaseClient.from('profiles').upsert({
             id: authData.user.id,
             full_name: name,
             role,

@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadProducts() {
-    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data, error } = await window.supabaseClient.from('products').select('*').order('created_at', { ascending: false });
     if (!error) {
       products = data || [];
     }
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadHistory() {
-    const { data, error } = await supabase.from('inventory_history').select('*').order('created_at', { ascending: false });
+    const { data, error } = await window.supabaseClient.from('inventory_history').select('*').order('created_at', { ascending: false });
     if (!error) {
       productHistory = data || [];
       renderHistory();
@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderProducts() {
     productTable.innerHTML = "";
-    products.forEach((p, index) => {
+    products.forEach((p) => {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${p.name}</td>
@@ -80,9 +80,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const price = parseFloat(document.getElementById("price").value);
     const stock = parseInt(document.getElementById("stock").value, 10);
 
-    const { data, error } = await supabase.from('products').insert([{ name, variant, price, stock }]).select();
+    const { data, error } = await window.supabaseClient.from('products').insert([{ name, variant, price, stock }]).select();
     if (!error && data && data[0]) {
-      await supabase.from('inventory_history').insert([{ product_id: data[0].id, action: `Product added with stock ${stock}`, quantity: stock }]);
+      await window.supabaseClient.from('inventory_history').insert([{ product_id: data[0].id, action: `Product added with stock ${stock}`, quantity: stock }]);
       await loadProducts();
       await loadHistory();
       e.target.reset();
@@ -99,19 +99,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (e.target.classList.contains("add")) {
         const newStock = Number(product.stock) + qty;
-        await supabase.from('products').update({ stock: newStock }).eq('id', id);
-        await supabase.from('inventory_history').insert([{ product_id: id, action: `${qty} stock added`, quantity: qty }]);
+        await window.supabaseClient.from('products').update({ stock: newStock }).eq('id', id);
+        await window.supabaseClient.from('inventory_history').insert([{ product_id: id, action: `${qty} stock added`, quantity: qty }]);
       } else if (e.target.classList.contains("sell")) {
         if (Number(product.stock) >= qty) {
           const newStock = Number(product.stock) - qty;
-          await supabase.from('products').update({ stock: newStock }).eq('id', id);
-          await supabase.from('inventory_history').insert([{ product_id: id, action: `${qty} stock sold`, quantity: qty }]);
+          await window.supabaseClient.from('products').update({ stock: newStock }).eq('id', id);
+          await window.supabaseClient.from('inventory_history').insert([{ product_id: id, action: `${qty} stock sold`, quantity: qty }]);
         } else {
           alert(`Not enough stock to sell ${qty} units of ${product.name}.`);
         }
       } else if (e.target.classList.contains("remove")) {
-        await supabase.from('inventory_history').insert([{ product_id: id, action: 'Product removed', quantity: 0 }]);
-        await supabase.from('products').delete().eq('id', id);
+        await window.supabaseClient.from('inventory_history').insert([{ product_id: id, action: 'Product removed', quantity: 0 }]);
+        await window.supabaseClient.from('products').delete().eq('id', id);
       } else if (e.target.classList.contains("view-history")) {
         showProductHistory(id);
       }
@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function showProductHistory(id) {
     modal.style.display = "block";
-    const { data } = await supabase.from('inventory_history').select('*').eq('product_id', id).order('created_at', { ascending: false });
+    const { data } = await window.supabaseClient.from('inventory_history').select('*').eq('product_id', id).order('created_at', { ascending: false });
     const product = products.find(p => p.id === id);
     modalTitle.textContent = `${product?.name || 'Product'} (${product?.variant || ''}) History`;
     productHistoryList.innerHTML = "";

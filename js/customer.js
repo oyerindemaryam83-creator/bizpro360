@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const adminInfo = {
     name: "Oyerinde B Venture",
-    address: "No 17 Balogun Street, Ijoko road, Sango, Ogun State. ",
+    address: "No 17 Balogun Street, Ijoko road, Sango, Ogun State.",
     phone: "+2348056139847,+2348065053524"
   };
 
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let products = [];
   let cart = [];
 
-  const logoutLink = document.querySelector('a[href="indexlogin.html"]');
+  const logoutLink = document.querySelector('a[href="index.html"]');
   if (logoutLink) {
     logoutLink.addEventListener('click', async (event) => {
       event.preventDefault();
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadProducts() {
-    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data, error } = await window.supabaseClient.from('products').select('*').order('created_at', { ascending: false });
     if (!error) {
       products = data || [];
       renderProducts();
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderProducts() {
     productTable.innerHTML = "";
-    products.forEach((p, index) => {
+    products.forEach((p) => {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${p.name}</td>
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           cart.push({ ...product, qty });
         }
         const newStock = Number(product.stock) - qty;
-        await supabase.from('products').update({ stock: newStock }).eq('id', id);
+        await window.supabaseClient.from('products').update({ stock: newStock }).eq('id', id);
         await loadProducts();
         renderCart();
       } else {
@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const item = cart[index];
       const product = products.find(p => p.id === item.id);
       const restoredStock = Number(product.stock) + item.qty;
-      await supabase.from('products').update({ stock: restoredStock }).eq('id', item.id);
+      await window.supabaseClient.from('products').update({ stock: restoredStock }).eq('id', item.id);
       cart.splice(index, 1);
       await loadProducts();
       renderCart();

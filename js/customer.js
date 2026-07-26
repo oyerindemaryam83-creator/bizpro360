@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const welcomeMessage = document.getElementById("welcomeMessage");
   const productTable = document.getElementById("customerProductTable");
   const cartTable = document.getElementById("cartTable");
@@ -7,25 +7,39 @@ document.addEventListener("DOMContentLoaded", () => {
   const paymentResult = document.getElementById("paymentResult");
   const receiptOutput = document.getElementById("receiptOutput");
 
-  
   const adminInfo = {
     name: "Oyerinde B Venture",
     address: "No 17 Balogun Street, Ijoko road, Sango, Ogun State. ",
     phone: "+2348056139847,+2348065053524"
   };
 
-
-  let users = JSON.parse(localStorage.getItem("users")) || [];
-  let currentUserEmail = sessionStorage.getItem("currentUserEmail");
-  let currentUser = users.find(u => u.email === currentUserEmail);
-  if (currentUser) {
-    welcomeMessage.textContent = `Welcome, ${currentUser.name}`;
-  }
-
-  let products = JSON.parse(localStorage.getItem("inventory")) || [];
+  let currentUser = null;
+  let products = [];
   let cart = [];
 
-  renderProducts();
+  const logoutLink = document.querySelector('a[href="indexlogin.html"]');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', async (event) => {
+      event.preventDefault();
+      await signOut();
+    });
+  }
+
+  async function loadUser() {
+    const profile = await requireRole('customer');
+    if (!profile) return null;
+    currentUser = profile;
+    welcomeMessage.textContent = `Welcome, ${currentUser.full_name || currentUser.email}`;
+    return currentUser;
+  }
+
+  async function loadProducts() {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (!error) {
+      products = data || [];
+      renderProducts();
+    }
+  }
 
   function renderProducts() {
     productTable.innerHTML = "";
@@ -37,29 +51,34 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${p.price}</td>
         <td>${p.stock}</td>
         <td><input type="number" min="1" max="${p.stock}" value="1" class="qty-input"></td>
-        <td><button data-index="${index}">Add to Cart</button></td>
+        <td><button data-id="${p.id}">Add to Cart</button></td>
       `;
       productTable.appendChild(row);
     });
   }
 
-  productTable.addEventListener("click", (e) => {
-    if (e.target.tagName === "BUTTON") {
-      const index = e.target.getAttribute("data-index");
-      const product = products[index];
-      const qtyInput = e.target.closest("tr").querySelector(".qty-input");
-      const qty = parseInt(qtyInput.value);
+  const profile = await loadUser();
+  if (!profile) return;
 
-      if (qty > 0 && qty <= product.stock) {
-        const existing = cart.find(item => item.name === product.name && item.variant === product.variant);
+  await loadProducts();
+
+  productTable.addEventListener("click", async (e) => {
+    if (e.target.tagName === "BUTTON") {
+      const id = e.target.getAttribute("data-id");
+      const product = products.find(p => p.id === id);
+      const qtyInput = e.target.closest("tr").querySelector(".qty-input");
+      const qty = parseInt(qtyInput.value, 10);
+
+      if (qty > 0 && qty <= Number(product.stock)) {
+        const existing = cart.find(item => item.id === product.id);
         if (existing) {
           existing.qty += qty;
         } else {
           cart.push({ ...product, qty });
         }
-        product.stock -= qty;
-        localStorage.setItem("inventory", JSON.stringify(products));
-        renderProducts();
+        const newStock = Number(product.stock) - qty;
+        await supabase.from('products').update({ stock: newStock }).eq('id', id);
+        await loadProducts();
         renderCart();
       } else {
         alert("Invalid quantity.");
@@ -87,22 +106,22 @@ document.addEventListener("DOMContentLoaded", () => {
     grandTotalEl.textContent = grandTotal;
   }
 
-  cartTable.addEventListener("click", (e) => {
+  cartTable.addEventListener("click", async (e) => {
     if (e.target.tagName === "BUTTON") {
       const index = e.target.getAttribute("data-index");
       const item = cart[index];
-      const product = products.find(p => p.name === item.name && p.variant === item.variant);
-      product.stock += item.qty;
+      const product = products.find(p => p.id === item.id);
+      const restoredStock = Number(product.stock) + item.qty;
+      await supabase.from('products').update({ stock: restoredStock }).eq('id', item.id);
       cart.splice(index, 1);
-      localStorage.setItem("inventory", JSON.stringify(products));
-      renderProducts();
+      await loadProducts();
       renderCart();
     }
   });
 
   document.getElementById("checkoutBtn").addEventListener("click", () => {
-    const grandTotal = parseInt(grandTotalEl.textContent);
-    const payment = parseInt(paymentInput.value);
+    const grandTotal = parseInt(grandTotalEl.textContent, 10);
+    const payment = parseInt(paymentInput.value, 10);
 
     if (isNaN(payment) || payment <= 0) {
       paymentResult.textContent = "Enter a valid payment amount.";
@@ -124,17 +143,13 @@ document.addEventListener("DOMContentLoaded", () => {
     let receipt = "=== BizPro Manager Receipt ===\n";
     receipt += new Date().toLocaleString() + "\n\n";
 
-   
     receipt += `Admin: ${adminInfo.name}\n`;
     receipt += `Address: ${adminInfo.address}\n`;
     receipt += `Phone: ${adminInfo.phone}\n\n`;
 
     if (currentUser) {
-      receipt += `Customer: ${currentUser.name}\n`;
+      receipt += `Customer: ${currentUser.full_name || currentUser.email}\n`;
       receipt += `Email: ${currentUser.email}\n`;
-      if (currentUser.phone) {
-        receipt += `Phone: ${currentUser.phone}\n`;
-      }
       receipt += "\n";
     }
 
@@ -142,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
       receipt += `${item.name} (${item.variant}) x${item.qty} - ₦${item.qty * item.price}\n`;
     });
 
-   
     receipt += `\nGrand Total: ₦${grandTotal}\n`;
     receipt += `Payment: ₦${payment}\n`;
     if (payment >= grandTotal) {

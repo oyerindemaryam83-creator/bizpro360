@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const productTable = document.getElementById("productTable");
   const alerts = document.getElementById("alerts");
   const historyLog = document.getElementById("historyLog");
@@ -8,9 +8,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalTitle = document.getElementById("modalTitle");
   const productHistoryList = document.getElementById("productHistoryList");
 
-  let products = JSON.parse(localStorage.getItem("inventory")) || [];
+  let products = [];
+  let productHistory = [];
 
-  // Render products
+  const logoutLink = document.querySelector('a[href="indexlogin.html"]');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', async (event) => {
+      event.preventDefault();
+      await signOut();
+    });
+  }
+
+  async function loadProducts() {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (!error) {
+      products = data || [];
+    }
+    renderProducts();
+  }
+
+  async function loadHistory() {
+    const { data, error } = await supabase.from('inventory_history').select('*').order('created_at', { ascending: false });
+    if (!error) {
+      productHistory = data || [];
+      renderHistory();
+    }
+  }
+
+  function renderHistory() {
+    historyLog.innerHTML = "";
+    productHistory.forEach(entry => {
+      const li = document.createElement("li");
+      li.textContent = `${entry.created_at} - ${entry.action}`;
+      historyLog.appendChild(li);
+    });
+  }
+
   function renderProducts() {
     productTable.innerHTML = "";
     products.forEach((p, index) => {
@@ -20,13 +53,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${p.variant}</td>
         <td>${p.price}</td>
         <td>${p.stock}</td>
-        <td>${p.price * p.stock}</td>
+        <td>${Number(p.price) * Number(p.stock)}</td>
         <td>
           <input type="number" min="1" placeholder="Qty" class="qty-input">
-          <button class="btn add" data-index="${index}">Add</button>
-          <button class="btn danger sell" data-index="${index}">Sell</button>
-          <button class="btn remove" data-index="${index}">Remove</button>
-          <button class="btn view-history" data-index="${index}">View History</button>
+          <button class="btn add" data-id="${p.id}">Add</button>
+          <button class="btn danger sell" data-id="${p.id}">Sell</button>
+          <button class="btn remove" data-id="${p.id}">Remove</button>
+          <button class="btn view-history" data-id="${p.id}">View History</button>
         </td>
       `;
       productTable.appendChild(row);
@@ -34,93 +67,84 @@ document.addEventListener("DOMContentLoaded", () => {
     checkAlerts();
   }
 
-  renderProducts();
+  const profile = await requireRole('admin');
+  if (!profile) return;
 
-  // Add new product
-  document.getElementById("productForm").addEventListener("submit", (e) => {
+  await loadProducts();
+  await loadHistory();
+
+  document.getElementById("productForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const name = document.getElementById("productName").value;
-    const variant = document.getElementById("variant").value;
-    const price = parseInt(document.getElementById("price").value);
-    const stock = parseInt(document.getElementById("stock").value);
+    const name = document.getElementById("productName").value.trim();
+    const variant = document.getElementById("variant").value.trim();
+    const price = parseFloat(document.getElementById("price").value);
+    const stock = parseInt(document.getElementById("stock").value, 10);
 
-    const newProduct = { name, variant, price, stock, history: [] };
-    products.push(newProduct);
-    logHistory(newProduct, `Product added with stock ${stock}`);
-    localStorage.setItem("inventory", JSON.stringify(products));
-    renderProducts();
-    e.target.reset();
+    const { data, error } = await supabase.from('products').insert([{ name, variant, price, stock }]).select();
+    if (!error && data && data[0]) {
+      await supabase.from('inventory_history').insert([{ product_id: data[0].id, action: `Product added with stock ${stock}`, quantity: stock }]);
+      await loadProducts();
+      await loadHistory();
+      e.target.reset();
+    }
   });
 
-  // Handle actions
-  productTable.addEventListener("click", (e) => {
+  productTable.addEventListener("click", async (e) => {
     if (e.target.tagName === "BUTTON") {
-      const index = e.target.getAttribute("data-index");
-      const product = products[index];
+      const id = e.target.getAttribute("data-id");
+      const product = products.find(p => p.id === id);
       const row = e.target.closest("tr");
       const qtyInput = row.querySelector(".qty-input");
-      let qty = parseInt(qtyInput.value) || 1;
+      let qty = parseInt(qtyInput.value, 10) || 1;
 
       if (e.target.classList.contains("add")) {
-        product.stock += qty;
-        logHistory(product, `${qty} stock added`);
+        const newStock = Number(product.stock) + qty;
+        await supabase.from('products').update({ stock: newStock }).eq('id', id);
+        await supabase.from('inventory_history').insert([{ product_id: id, action: `${qty} stock added`, quantity: qty }]);
       } else if (e.target.classList.contains("sell")) {
-        if (product.stock >= qty) {
-          product.stock -= qty;
-          logHistory(product, `${qty} stock sold`);
+        if (Number(product.stock) >= qty) {
+          const newStock = Number(product.stock) - qty;
+          await supabase.from('products').update({ stock: newStock }).eq('id', id);
+          await supabase.from('inventory_history').insert([{ product_id: id, action: `${qty} stock sold`, quantity: qty }]);
         } else {
           alert(`Not enough stock to sell ${qty} units of ${product.name}.`);
         }
       } else if (e.target.classList.contains("remove")) {
-        logHistory(product, "Product removed");
-        products.splice(index, 1);
+        await supabase.from('inventory_history').insert([{ product_id: id, action: 'Product removed', quantity: 0 }]);
+        await supabase.from('products').delete().eq('id', id);
       } else if (e.target.classList.contains("view-history")) {
-        showProductHistory(product);
+        showProductHistory(id);
       }
 
-      localStorage.setItem("inventory", JSON.stringify(products));
-      renderProducts();
-      qtyInput.value = "";
+      await loadProducts();
+      await loadHistory();
+      if (qtyInput) qtyInput.value = "";
     }
   });
 
-  // Log history globally and per product
-  function logHistory(product, action) {
-    const entry = `${new Date().toLocaleString()} - ${action} for ${product.name} (${product.variant})`;
-    product.history = product.history || [];
-    product.history.push(entry);
-
-    const li = document.createElement("li");
-    li.textContent = entry;
-    historyLog.prepend(li);
-
-    localStorage.setItem("inventory", JSON.stringify(products));
-  }
-
-  // Show product-specific history
-  function showProductHistory(product) {
+  async function showProductHistory(id) {
     modal.style.display = "block";
-    modalTitle.textContent = `${product.name} (${product.variant}) History`;
+    const { data } = await supabase.from('inventory_history').select('*').eq('product_id', id).order('created_at', { ascending: false });
+    const product = products.find(p => p.id === id);
+    modalTitle.textContent = `${product?.name || 'Product'} (${product?.variant || ''}) History`;
     productHistoryList.innerHTML = "";
 
-    (product.history || []).forEach(entry => {
+    (data || []).forEach(entry => {
       const li = document.createElement("li");
-      li.textContent = entry;
+      li.textContent = `${entry.created_at} - ${entry.action}`;
       productHistoryList.appendChild(li);
     });
   }
 
-  // Alerts
   function checkAlerts() {
     alerts.innerHTML = "";
     products.forEach(p => {
-      if (p.stock < 5) {
+      if (Number(p.stock) < 5) {
         alerts.innerHTML += `<p style="color:red; font-weight:bold;">⚠️ Low stock: ${p.name} (${p.variant}) has only ${p.stock} left!</p>`;
       }
     });
   }
 
-  // Modal close
   closeBtn.onclick = () => modal.style.display = "none";
   window.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
 });

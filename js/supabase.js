@@ -40,22 +40,12 @@ async function requireRole(requiredRole) {
     return null;
   }
 
-  const { data, error } = await window.supabaseClient
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
+  const profile = await getCurrentUserProfile();
+  const userRole = normalizeRole(profile?.role);
+  const expectedRole = normalizeRole(requiredRole);
 
-  const profile = (!error && data)
-    ? { ...data, role: normalizeRole(data.role) }
-    : {
-        id: user.id,
-        email: user.email,
-        full_name: user?.user_metadata?.full_name || user?.user_metadata?.name || null,
-        role: normalizeRole(user?.user_metadata?.role || user?.app_metadata?.role)
-      };
-
-  if (!profile || (requiredRole && normalizeRole(profile.role) !== normalizeRole(requiredRole))) {
+  if (!userRole || (expectedRole && userRole !== expectedRole)) {
+    console.warn(`Access denied. Role mismatch: needed ${expectedRole}, got ${userRole}`);
     window.location.href = 'index.html';
     return null;
   }
